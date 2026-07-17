@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主題單字學習卡 Pro</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="單字卡">
+    <link rel="apple-touch-icon" href="app-icon.png">
+    <link rel="icon" type="image/png" href="app-icon.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        /* 匯入字型，包含版權簽名用的 Caveat 手寫字體 */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Roboto+Mono:wght@400;700&family=Caveat:wght@600&display=swap');
+        
+        /* 定義字型類別 */
+        .font-sans-inter { font-family: 'Inter', sans-serif; }
+        .font-serif-classic { font-family: 'Playfair Display', serif; }
+        .font-mono-code { font-family: 'Roboto Mono', monospace; }
+        .font-caveat { font-family: 'Caveat', cursive; } /* 版權專用字體 */
+
+        body {
+            background-color: #f8fafc;
+            font-family: 'Inter', sans-serif; 
+        }
+
+        /* 3D Flip Card Styles - 加強相容性以修復 iOS 幽靈文字 */
+        .perspective-1000 { 
+            perspective: 1000px; 
+            -webkit-perspective: 1000px;
+        }
+        .transform-style-3d { 
+            transform-style: preserve-3d; 
+            -webkit-transform-style: preserve-3d;
+        }
+        /* 關鍵修復：加上 -webkit- 前綴確保 iPhone Safari 正常隱藏背面 */
+        .backface-hidden { 
+            backface-visibility: hidden; 
+            -webkit-backface-visibility: hidden; 
+        }
+        .rotate-y-180 { 
+            transform: rotateY(180deg); 
+            -webkit-transform: rotateY(180deg);
+        }
+        .card-transition { 
+            transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1); 
+            -webkit-transition: -webkit-transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+        }
+
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Modal Animation */
+        .animate-bounce-in { animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes bounceIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-hidden {
+            display: none !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        /* 自訂 Range Slider 滑桿樣式 */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #2563eb;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        input[type=range]::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #2563eb;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body class="min-h-[100dvh] flex flex-col items-center justify-start md:justify-center p-3 sm:p-4 pb-6 md:pb-4 font-sans-inter">
+
+    <!-- 主應用程式區塊 -->
+    <div class="w-full max-w-4xl flex flex-col gap-2 md:gap-4 relative z-10 pt-1 md:pt-0">
+        
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center w-full px-1 gap-2 shrink-0">
+            <h1 class="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                單字學習卡 <span class="bg-blue-100 text-blue-700 text-sm px-2 py-0.5 rounded-lg">Pro</span>
+                <span id="deck-name-display" class="hidden bg-pink-100 text-pink-700 font-bold text-sm px-2.5 py-0.5 rounded-lg border border-pink-200 shadow-sm tracking-wide"></span>
+            </h1>
+            
+            <div class="flex flex-nowrap items-center justify-end gap-1.5 sm:gap-2 w-full md:w-auto min-w-0">
+                
+                <!-- 字型選擇器 -->
+                <div class="relative h-9 sm:h-10 shrink min-w-0">
+                    <select id="font-selector" class="h-full pl-2 pr-6 sm:pl-3 sm:pr-8 rounded-xl bg-white border border-slate-200 text-slate-600 text-[11px] sm:text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer w-full text-ellipsis overflow-hidden">
+                        <option value="font-sans-inter">預設字型</option>
+                        <option value="font-serif-classic">襯線體</option>
+                        <option value="font-mono-code">等寬體</option>
+                    </select>
+                    <i class="ph ph-caret-down absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs sm:text-base"></i>
+                </div>
+
+                <!-- 語音速度滑桿 -->
+                <div class="flex items-center gap-1.5 sm:gap-2 bg-white px-2 sm:px-3 h-9 sm:h-10 rounded-xl border border-slate-200 shadow-sm shrink">
+                    <i class="ph-fill ph-speaker-high text-slate-400 text-[15px] sm:text-lg hidden sm:block"></i>
+                    <div class="flex flex-col justify-center min-w-[50px]">
+                        <span class="text-[8px] sm:text-[9px] text-slate-500 font-bold leading-none mb-1">語音速度 <span id="tts-speed-label" class="text-blue-600">中</span></span>
+                        <input type="range" id="tts-speed-slider" min="0" max="2" step="1" value="1" class="w-12 sm:w-16 h-1 sm:h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer outline-none">
+                    </div>
+                </div>
+
+                <!-- 重設進度按鈕 -->
+                <button onclick="resetProgress()" class="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-red-100 text-red-500 hover:text-white hover:bg-red-500 hover:border-red-500 transition-all shadow-sm focus:outline-none shrink-0" title="清除所有學習進度">
+                    <i class="ph ph-trash text-lg sm:text-xl"></i>
+                </button>
+
+                <!-- Info Modal Button -->
+                <button onclick="openInfoModal()" class="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all shadow-sm focus:outline-none shrink-0">
+                    <i class="ph ph-info text-lg sm:text-xl"></i>
+                </button>
+                
+                <!-- 匯入 CSV -->
+                <label class="cursor-pointer inline-flex items-center justify-center gap-1 sm:gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-2.5 sm:px-4 h-9 sm:h-10 rounded-xl font-medium transition-colors shadow-sm text-xs sm:text-sm shrink-0 whitespace-nowrap">
+                    <i class="ph ph-upload-simple text-base sm:text-lg"></i> 
+                    <span>匯入<span class="hidden sm:inline"> CSV</span></span>
+                    <input type="file" id="csv-file" accept=".csv" class="hidden">
+                </label>
+            </div>
+        </div>
+
+        <!-- Global Error Message -->
+        <div id="error-message" class="text-red-600 text-sm hidden font-medium bg-red-50 p-4 rounded-xl border border-red-100 w-full shadow-sm shrink-0"></div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="bg-white p-12 rounded-3xl shadow-sm border border-slate-200 text-center flex flex-col items-center justify-center min-h-[50vh] md:h-[450px]">
+            <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center text-blue-500 mb-4">
+                <i class="ph-fill ph-cards text-4xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-700 mb-2">開始您的闖關學習</h2>
+            <p class="text-slate-500 max-w-sm mx-auto text-sm">點擊右上角的「匯入 CSV」按鈕，系統會自動將單字平均分配至 5 個關卡，並隨時為您儲存進度！</p>
+        </div>
+
+        <!-- Flashcard Area -->
+        <div id="flashcard-area" class="hidden flex-col gap-2 md:gap-3 w-full">
+            
+            <!-- Level Tabs -->
+            <div id="level-tabs" class="flex gap-1.5 sm:gap-2 w-full min-h-[40px] sm:min-h-[48px] items-center px-1 overflow-x-auto custom-scrollbar pb-1 sm:pb-0 shrink-0">
+            </div>
+
+            <!-- Unified Stats & Progress Bar -->
+            <div class="bg-white py-2.5 sm:py-3 px-4 sm:px-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 w-full shrink-0">
+                <div class="flex items-center gap-3 w-full sm:w-4/12">
+                    <span class="font-bold text-slate-600 font-mono text-sm shrink-0 w-12 text-right"><span id="remaining-count" class="text-blue-600">0</span><span class="text-slate-300 font-normal">/</span><span id="total-count" class="text-slate-400">0</span></span>
+                    <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden flex-1 relative">
+                        <div id="progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div id="stats-container" class="flex flex-wrap gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-bold w-full sm:w-auto justify-center sm:justify-end transition-opacity">
+                    <span class="text-red-600 bg-red-50 border border-red-100 px-1.5 py-1 rounded-lg flex items-center gap-1 shadow-sm">Again <span id="stat-again" class="bg-white px-1 rounded text-red-500 font-mono">0</span></span>
+                    <span class="text-orange-600 bg-orange-50 border border-orange-100 px-1.5 py-1 rounded-lg flex items-center gap-1 shadow-sm">Hard <span id="stat-hard" class="bg-white px-1 rounded text-orange-500 font-mono">0</span></span>
+                    <span class="text-green-600 bg-green-50 border border-green-100 px-1.5 py-1 rounded-lg flex items-center gap-1 shadow-sm">Good <span id="stat-good" class="bg-white px-1 rounded text-green-500 font-mono">0</span></span>
+                    <span class="text-blue-600 bg-blue-50 border border-blue-100 px-1.5 py-1 rounded-lg flex items-center gap-1 shadow-sm">Easy <span id="stat-easy" class="bg-white px-1 rounded text-blue-500 font-mono">0</span></span>
+                </div>
+            </div>
+
+            <!-- 卡片區域 -->
+            <div class="relative w-full h-[60vh] min-h-[350px] md:min-h-0 md:h-[450px] perspective-1000 group cursor-pointer shrink-0" id="card-container">
+                <div id="card-inner" class="w-full h-full relative transform-style-3d card-transition shadow-lg rounded-3xl bg-transparent">
+                    
+                    <!-- Front of Card (修正 backface) -->
+                    <div class="absolute w-full h-full backface-hidden bg-white rounded-3xl border border-slate-200 flex flex-col items-center justify-center p-6 sm:p-8 text-center" style="transform: rotateY(0deg);">
+                        <div class="flex flex-col sm:flex-row items-center gap-4 z-10">
+                            <h2 id="card-front-text" class="text-5xl sm:text-7xl font-bold text-slate-800 tracking-tight break-words px-4"></h2>
+                            <button id="front-speaker-btn" class="text-slate-400 hover:text-blue-600 transition-colors p-3 rounded-full hover:bg-blue-50 focus:outline-none">
+                                <i class="ph-fill ph-speaker-high text-3xl sm:text-4xl"></i>
+                            </button>
+                        </div>
+                        <p class="absolute bottom-6 text-slate-400 text-sm font-medium flex items-center gap-1.5 bg-slate-50 px-4 py-1.5 rounded-full z-10">
+                            <i class="ph-fill ph-hand-tap"></i> 輕觸卡片翻面
+                        </p>
+
+                        <!-- 🌟 正面版權簽名 -->
+                        <div class="absolute bottom-1 right-4 font-caveat text-slate-300 text-[11px] sm:text-[15px] whitespace-nowrap tracking-wider opacity-80 pointer-events-none">By Freddy</div>
+                    </div>
+
+                    <!-- Back of Card (修正 backface) -->
+                    <div class="absolute w-full h-full backface-hidden bg-white rounded-3xl border border-slate-200 p-4 sm:p-6 rotate-y-180 flex flex-col">
+                        
+                        <!-- Content Area -->
+                        <div id="card-back-scroll-container" class="flex-1 flex flex-col sm:flex-row gap-4 sm:gap-5 overflow-y-auto sm:overflow-hidden custom-scrollbar mb-3 sm:mb-4 pr-1 sm:pr-0 min-h-0">
+                            <!-- Text -->
+                            <div id="card-back-text" class="w-full sm:w-3/4 sm:h-full sm:overflow-y-auto sm:custom-scrollbar pr-1 sm:pr-3 text-sm text-slate-700 leading-snug flex flex-col justify-start shrink-0 sm:shrink">
+                            </div>
+                            
+                            <!-- Image -->
+                            <div id="card-back-image-container" class="w-full h-36 sm:h-full sm:w-1/4 flex-shrink-0 flex items-center justify-center bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden relative shadow-inner">
+                            </div>
+                        </div>
+                        
+                        <!-- SRS Buttons -->
+                        <div class="pt-3 sm:pt-4 border-t border-slate-100 grid grid-cols-4 gap-2 sm:gap-3 flex-shrink-0 relative z-10 bg-white" id="srs-buttons">
+                            <button class="bg-red-50 text-red-600 hover:bg-red-500 hover:text-white py-3 sm:py-4 rounded-xl font-bold transition-all shadow-sm text-sm sm:text-base focus:outline-none" onclick="handleSRS('again', event)">
+                                Again
+                            </button>
+                            <button class="bg-orange-50 text-orange-600 hover:bg-orange-500 hover:text-white py-3 sm:py-4 rounded-xl font-bold transition-all shadow-sm text-sm sm:text-base focus:outline-none" onclick="handleSRS('hard', event)">
+                                Hard
+                            </button>
+                            <button class="bg-green-50 text-green-600 hover:bg-green-500 hover:text-white py-3 sm:py-4 rounded-xl font-bold transition-all shadow-sm text-sm sm:text-base focus:outline-none" onclick="handleSRS('good', event)">
+                                Good
+                            </button>
+                            <button class="bg-blue-50 text-blue-600 hover:bg-blue-500 hover:text-white py-3 sm:py-4 rounded-xl font-bold transition-all shadow-sm text-sm sm:text-base focus:outline-none" onclick="handleSRS('easy', event)">
+                                Easy
+                            </button>
+                        </div>
+
+                        <!-- Review Buttons -->
+                        <div class="pt-3 sm:pt-4 border-t border-slate-100 grid grid-cols-2 gap-4 flex-shrink-0 hidden relative z-10 bg-white" id="review-buttons">
+                            <button id="btn-prev" class="bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed py-3 sm:py-4 rounded-xl font-bold transition-all flex justify-center items-center gap-2 focus:outline-none" onclick="handleReview('prev', event)">
+                                <i class="ph-bold ph-arrow-left"></i> 前一張
+                            </button>
+                            <button id="btn-next" class="bg-blue-100 text-blue-700 hover:bg-blue-200 disabled:opacity-40 disabled:cursor-not-allowed py-3 sm:py-4 rounded-xl font-bold transition-all flex justify-center items-center gap-2 focus:outline-none" onclick="handleReview('next', event)">
+                                下一張 <i class="ph-bold ph-arrow-right"></i>
+                            </button>
+                        </div>
+
+                        <!-- 🌟 背面版權簽名 -->
+                        <div class="absolute bottom-0.5 right-4 font-caveat text-slate-300 text-[11px] sm:text-[15px] whitespace-nowrap tracking-wider opacity-80 pointer-events-none z-20">By Freddy</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-slate-400 text-xs sm:text-sm flex items-center justify-center gap-1 mt-1 hidden sm:flex shrink-0">
+                <i class="ph ph-keyboard"></i> 支援電腦鍵盤操作 (Space 翻轉, 1-4 評估)
+            </div>
+        </div>
+    </div>
+
+    <!-- 整合版 Info Modal -->
+    <div id="info-modal" class="modal-hidden fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm transition-opacity duration-200">
+        <div class="bg-white rounded-3xl shadow-xl w-full max-w-2xl relative max-h-[85vh] flex flex-col font-sans-inter">
+            <div class="flex items-center justify-between p-6 border-b border-slate-100 sticky top-0 bg-white/95 backdrop-blur z-10 rounded-t-3xl">
+                <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <i class="ph-fill ph-book-open-text text-blue-600 text-2xl"></i> 系統操作指南
+                </h3>
+                <button onclick="closeInfoModal()" class="text-slate-400 hover:text-slate-700 transition-colors bg-slate-100 hover:bg-slate-200 rounded-full p-2 focus:outline-none">
+                    <i class="ph ph-x text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto custom-scrollbar space-y-6 text-sm text-slate-600">
+                <div>
+                    <div class="inline-block px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-bold mb-4 tracking-wider uppercase">
+                        INTRODUCTION
+                    </div>
+                    <h2 class="text-3xl font-black text-slate-900 mb-4 leading-tight">歡迎使用<br>主題單字學習卡 Pro</h2>
+                    <p class="text-slate-600 text-base leading-relaxed mb-6">
+                        本系統結合了「間隔重複系統 (SRS)」與「AI 語音辨識技術」，專為想要高效記憶單字並改善發音的學習者設計。透過科學的複習週期與即時發音回饋，讓您的英文學習事半功倍。
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="p-5 bg-blue-600 rounded-2xl text-white shadow-md">
+                            <div class="text-2xl mb-2">🧠</div>
+                            <h3 class="font-bold mb-1.5 text-base">SRS 記憶演算法</h3>
+                            <p class="text-blue-100 text-xs leading-relaxed">根據您的熟悉程度動態調整單字出現頻率，確保在忘記臨界點進行複習。</p>
+                        </div>
+                        <div class="p-5 bg-slate-800 rounded-2xl text-white shadow-md">
+                            <div class="text-2xl mb-2"><i class="ph-fill ph-microphone-stage text-slate-300"></i></div>
+                            <h3 class="font-bold mb-1.5 text-base">AI 語音評分</h3>
+                            <p class="text-slate-300 text-xs leading-relaxed">使用 Levenshtein 距離演算法比對發音，精準識別漏字與語意反轉。</p>
+                        </div>
+                    </div>
+                </div>
+                <hr class="border-slate-100 border-t-2">
+                <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                    <h4 class="font-bold text-slate-800 mb-3 text-base flex items-center gap-2"><span class="text-xl">🚀</span> 快速開始</h4>
+                    <p class="mb-2">點擊右上角 <b>匯入 CSV</b>，系統會自動將單字平均分配至 5 個關卡。檔案需為兩欄格式：第一欄為單字，第二欄為解釋與例句。建議在例句前加上 <code>【例句】</code> 標籤以獲得最佳排版。</p>
+                    <p class="text-slate-500 text-xs mt-3 flex items-center gap-1"><i class="ph-fill ph-info"></i> 您的學習進度會自動隨時儲存在瀏覽器中。</p>
+                </div>
+                <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                    <h4 class="font-bold text-slate-800 mb-3 text-base flex items-center gap-2"><span class="text-xl">🏆</span> 關卡推進與複習</h4>
+                    <ul class="space-y-3 mb-2 list-disc pl-5 text-sm">
+                        <li><strong class="text-slate-700">如何過關：</strong> 當您在學習模式中，將該關卡所有的單字都評估為 <span class="text-blue-500 font-bold">Easy</span> 時，即算完成該關卡。</li>
+                        <li><strong class="text-slate-700">解鎖下一關：</strong> 成功破關後，系統會顯示星星特效，並自動為您解鎖下一關（I → II → III...），已過關的標籤會變成綠色。</li>
+                        <li><strong class="text-slate-700">複習模式：</strong> 若點擊已經過關的綠色關卡，將進入「複習模式」。此時不會有記憶評估按鈕，而是改為「上一張 / 下一張」按鈕，讓您快速瀏覽複習。</li>
+                    </ul>
+                </div>
+                <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                    <h4 class="font-bold text-slate-800 mb-3 text-base flex items-center gap-2"><span class="text-xl">🧠</span> SRS 記憶評估按鈕</h4>
+                    <p class="mb-4">翻到卡片背面後，請根據記憶熟悉度誠實選擇，這將決定單字下次出現的時間：</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-start gap-3">
+                            <span class="text-red-500 font-bold w-12 shrink-0">Again</span> 
+                            <span class="text-xs">完全忘記。放入當前佇列最前方重新學習。</span>
+                        </div>
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-start gap-3">
+                            <span class="text-orange-500 font-bold w-12 shrink-0">Hard</span> 
+                            <span class="text-xs">有印象但模糊。放入剩餘卡片的中間。</span>
+                        </div>
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-start gap-3">
+                            <span class="text-green-500 font-bold w-12 shrink-0">Good</span> 
+                            <span class="text-xs">答對了。排到當前關卡最後面待會複習。</span>
+                        </div>
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-start gap-3">
+                            <span class="text-blue-500 font-bold w-12 shrink-0">Easy</span> 
+                            <span class="text-xs">太簡單。標記為完成，本關卡內不再出現。</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                    <h4 class="font-bold text-slate-800 mb-3 text-base flex items-center gap-2"><span class="text-xl">🎙️</span> AI 發音評分</h4>
+                    <ul class="space-y-3 mb-4 list-disc pl-5">
+                        <li>系統使用編輯距離演算法比對您的發音與標準例句。</li>
+                        <li>若單字差異在 30% 以內（如單複數 problem/problems），僅算作小瑕疵。</li>
+                        <li><span class="text-red-600 font-medium">嚴重失誤：</span>若漏唸或多唸否定詞 (not, don't 等)，系統會嚴格扣分以避免語意反轉。</li>
+                    </ul>
+                    <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm text-xs">
+                        <b>視覺回饋：</b> <span class="text-green-600 font-bold">綠色字</span> 代表發音完全正確； <span class="text-red-500 font-bold underline decoration-dashed underline-offset-2">紅色虛線字</span> 代表發音錯誤或多唸。
+                    </div>
+                </div>
+                <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                    <h4 class="font-bold text-slate-800 mb-3 text-base flex items-center gap-2"><span class="text-xl">⌨️</span> 電腦鍵盤快速鍵</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-6">
+                        <div class="flex items-center gap-3">
+                            <kbd class="bg-white border border-slate-300 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-mono shadow-sm text-slate-700 whitespace-nowrap">Space</kbd> 
+                            <span>翻轉卡片</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="flex gap-1">
+                                <kbd class="bg-white border border-slate-300 px-2 py-1 rounded-lg text-xs font-mono shadow-sm text-slate-700">←</kbd>
+                                <kbd class="bg-white border border-slate-300 px-2 py-1 rounded-lg text-xs font-mono shadow-sm text-slate-700">→</kbd>
+                            </div>
+                            <span>切換卡片 (複習模式)</span>
+                        </div>
+                        <div class="flex items-center gap-3 sm:col-span-2">
+                            <div class="flex gap-1">
+                                <kbd class="bg-white border border-slate-300 px-2 py-1 rounded-lg text-xs font-mono shadow-sm text-slate-700">1</kbd>
+                                <span class="text-slate-400">-</span>
+                                <kbd class="bg-white border border-slate-300 px-2 py-1 rounded-lg text-xs font-mono shadow-sm text-slate-700">4</kbd>
+                            </div>
+                            <span>評估 Again 到 Easy (學習模式)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="h-2 shrink-0"></div>
+        </div>
+    </div>
+
+    <!-- Level Complete Modal -->
+    <div id="level-complete-modal" class="modal-hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center animate-bounce-in font-sans-inter">
+            <div class="text-7xl mb-4">🌟</div>
+            <h3 class="text-3xl font-bold text-slate-800 mb-2">Way to go!</h3>
+            <p class="text-slate-500 mb-8 font-medium">您已完美掌握這個關卡的所有單字！</p>
+            <button onclick="proceedToNextLevel()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold transition-colors shadow-lg text-lg flex items-center justify-center gap-2 focus:outline-none">
+                Go! <i class="ph-bold ph-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- All Complete Modal -->
+    <div id="all-complete-modal" class="modal-hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center animate-bounce-in font-sans-inter">
+            <div class="text-7xl mb-4">🏆</div>
+            <h3 class="text-3xl font-bold text-slate-800 mb-2">You are a genius!</h3>
+            <p class="text-slate-500 mb-8 font-medium">太厲害了！您已成功破關所有的卡片！</p>
+            <button onclick="closeAllCompleteModal()" class="w-full bg-green-500 hover:bg-green-600 text-white py-4 rounded-xl font-bold transition-colors shadow-lg text-lg flex items-center justify-center gap-2 focus:outline-none">
+                Close <i class="ph-bold ph-check"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const SAVE_KEY = 'flashcard_pro_levels_save_v2';
+        const FONT_PREF_KEY = 'flashcard_pro_font_pref'; 
+        const LEVEL_LABELS = ['I', 'II', 'III', 'IV', 'V'];
+        
+        let levels = [];            
+        let currentLevelIndex = 0;  
+        let appMode = 'srs';        
+        let reviewIndex = 0;        
+        let currentDeckName = ''; 
+        
+        let ttsRate = 0.85; 
+        let isFlipped = false;
+        let currentAudio = null;
+        let activeRecognition = null;
+        let isRecording = false;
+
+        const audioCache = new Map();
+        const imageCache = new Map(); 
+        const preloadingSet = new Set(); 
+
+        const fontSelector = document.getElementById('font-selector');
+        
+        function applyFont(fontClass) {
+            document.body.classList.remove('font-sans-inter', 'font-serif-classic', 'font-mono-code');
+            document.body.classList.add(fontClass);
+            fontSelector.value = fontClass;
+            localStorage.setItem(FONT_PREF_KEY, fontClass);
+        }
+
+        fontSelector.addEventListener('change', (e) => {
+            applyFont(e.target.value);
+        });
+
+        function loadFontPreference() {
+            const savedFont = localStorage.getItem(FONT_PREF_KEY);
+            if (savedFont) {
+                applyFont(savedFont);
+            }
+        }
+
+        const speedSettings = [
+            { rate: 0.7, label: '慢' },
+            { rate: 0.85, label: '中' },
+            { rate: 1.0, label: '正常' }
+        ];
+        const speedSlider = document.getElementById('tts-speed-slider');
+        const speedLabel = document.getElementById('tts-speed-label');
+
+        speedSlider.addEventListener('input', (e) => {
+            const idx = parseInt(e.target.value);
+            ttsRate = speedSettings[idx].rate;
+            speedLabel.innerText = speedSettings[idx].label;
+        });
+
+        function getCleanWords(text) {
+            if (!text) return [];
+            return text.toLowerCase().replace(/[.,?!;:()"'“”]/g, '').trim().split(/\s+/).filter(w => w.length > 0);
+        }
+
+        function charLevenshtein(a, b) {
+            if (a.length === 0) return b.length;
+            if (b.length === 0) return a.length;
+            let matrix = [];
+            for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+            for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+
+            for (let i = 1; i <= b.length; i++) {
+                for (let j = 1; j <= a.length; j++) {
+                    if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1,
+                            matrix[i][j - 1] + 1,
+                            matrix[i - 1][j] + 1
+                        );
+                    }
+                }
+            }
+            return matrix[b.length][a.length];
+        }
+
+        function calculatePronunciationScore(expected, spoken) {
+            const expectedWords = getCleanWords(expected);
+            const spokenWords = getCleanWords(spoken);
+
+            if (expectedWords.length === 0) return { score: 10, ui: '', feedback: '🌟 Perfect! 發音非常清晰' };
+            if (spokenWords.length === 0) return { score: 0, ui: '', feedback: '❌ 完全沒有偵測到發音' };
+
+            const negativeWords = new Set(['not', 'dont', 'doesnt', 'didnt', 'cant', 'couldnt', 'wont', 'wouldnt', 'isnt', 'arent', 'wasnt', 'werent', 'hasnt', 'havent', 'hadnt', 'shouldnt', 'never', 'no', 'none', 'nobody', 'nothing', 'neither', 'nor', 'hardly', 'scarcely', 'barely']);
+            const expNegs = expectedWords.filter(w => negativeWords.has(w));
+            const spoNegs = spokenWords.filter(w => negativeWords.has(w));
+            
+            let hasSemanticInversion = (expNegs.length !== spoNegs.length);
+
+            let dp = Array(spokenWords.length + 1).fill(null).map(() => Array(expectedWords.length + 1).fill(null));
+            dp[0][0] = { cost: 0, op: 'START' };
+            for (let i = 1; i <= spokenWords.length; i++) dp[i][0] = { cost: i, op: 'INS', prevI: i-1, prevJ: 0 };
+            for (let j = 1; j <= expectedWords.length; j++) dp[0][j] = { cost: j, op: 'DEL', prevI: 0, prevJ: j-1 };
+
+            for (let i = 1; i <= spokenWords.length; i++) {
+                for (let j = 1; j <= expectedWords.length; j++) {
+                    const spokenW = spokenWords[i - 1];
+                    const expectedW = expectedWords[j - 1];
+                    
+                    if (spokenW === expectedW) {
+                        dp[i][j] = { cost: dp[i-1][j-1].cost, op: 'MATCH', prevI: i-1, prevJ: j-1 };
+                    } else {
+                        const charDist = charLevenshtein(expectedW, spokenW);
+                        const maxLen = Math.max(expectedW.length, spokenW.length);
+                        const isMinor = charDist <= (maxLen * 0.3);
+                        const subCost = isMinor ? 0.5 : 1; 
+
+                        const costSub = dp[i-1][j-1].cost + subCost;
+                        const costIns = dp[i-1][j].cost + 1; 
+                        const costDel = dp[i][j-1].cost + 1; 
+
+                        let minCost = Math.min(costSub, costIns, costDel);
+                        if (minCost === costSub) {
+                            dp[i][j] = { cost: minCost, op: 'SUB', prevI: i-1, prevJ: j-1, isMinor };
+                        } else if (minCost === costIns) {
+                            dp[i][j] = { cost: minCost, op: 'INS', prevI: i-1, prevJ: j };
+                        } else {
+                            dp[i][j] = { cost: minCost, op: 'DEL', prevI: i, prevJ: j-1 };
+                        }
+                    }
+                }
+            }
+
+            let i = spokenWords.length;
+            let j = expectedWords.length;
+            let alignSpoken = [];
+            let hasMajor = false;
+            let hasMinor = false;
+            let hasOmission = false;
+            
+            while (i > 0 || j > 0) {
+                const cell = dp[i][j];
+                if (cell.op === 'MATCH') {
+                    alignSpoken.unshift({ word: spokenWords[i-1], type: 'correct' });
+                    i = cell.prevI; j = cell.prevJ;
+                } else if (cell.op === 'SUB') {
+                    alignSpoken.unshift({ word: spokenWords[i-1], type: 'wrong', minor: cell.isMinor });
+                    if (cell.isMinor) hasMinor = true; else hasMajor = true;
+                    i = cell.prevI; j = cell.prevJ;
+                } else if (cell.op === 'INS') { 
+                    alignSpoken.unshift({ word: spokenWords[i-1], type: 'extra' });
+                    hasMajor = true;
+                    i = cell.prevI; j = cell.prevJ;
+                } else if (cell.op === 'DEL') { 
+                    hasOmission = true;
+                    hasMajor = true;
+                    i = cell.prevI; j = cell.prevJ;
+                }
+            }
+
+            let uiHtml = alignSpoken.map(item => {
+                if (item.type === 'correct') {
+                    return `<span class="text-green-600 font-semibold">${escapeHTML(item.word)}</span>`;
+                } else {
+                    return `<span class="text-red-500 font-semibold underline decoration-dashed decoration-red-400 underline-offset-4">${escapeHTML(item.word)}</span>`;
+                }
+            }).join(' ');
+
+            const basePenalty = 10 / expectedWords.length;
+            const totalErrors = dp[spokenWords.length][expectedWords.length].cost;
+            let finalScore = 10 - (totalErrors * basePenalty);
+            
+            if (hasSemanticInversion) {
+                finalScore -= 3.5;
+            }
+            
+            finalScore = Math.max(0, finalScore); 
+            finalScore = parseFloat(finalScore.toFixed(1));
+
+            let feedback = "";
+            if (hasSemanticInversion) {
+                feedback = "⚠️ 嚴重失誤：漏唸或多唸否定詞";
+            } else if (finalScore === 10) {
+                feedback = "🌟 Perfect! 發音非常清晰";
+            } else if (hasMajor) {
+                feedback = hasOmission ? "❌ 發音有明顯錯誤或漏字" : "❌ 發音有明顯錯誤或多字";
+            } else if (hasMinor) {
+                feedback = "💡 些微瑕疵：注意部分發音細節";
+            } else {
+                feedback = "👍 繼續保持，可以唸得更順暢喔！";
+            }
+
+            return { score: finalScore, ui: uiHtml, feedback };
+        }
+
+        const fileInput = document.getElementById('csv-file');
+        const emptyState = document.getElementById('empty-state');
+        const flashcardArea = document.getElementById('flashcard-area');
+        const errorMsg = document.getElementById('error-message');
+        
+        const cardContainer = document.getElementById('card-container');
+        const cardInner = document.getElementById('card-inner');
+        const frontText = document.getElementById('card-front-text');
+        const backTextContainer = document.getElementById('card-back-text');
+        const backImageContainer = document.getElementById('card-back-image-container');
+        
+        const srsButtons = document.getElementById('srs-buttons');
+        const reviewButtons = document.getElementById('review-buttons');
+        const statsContainer = document.getElementById('stats-container');
+        
+        const levelCompleteModal = document.getElementById('level-complete-modal');
+        const allCompleteModal = document.getElementById('all-complete-modal');
+        const infoModal = document.getElementById('info-modal');
+
+        function showElement(el) { el.classList.remove('modal-hidden', 'hidden'); }
+        function hideElement(el) { el.classList.add('hidden'); }
+
+        function saveProgress() {
+            const data = { levels, currentLevelIndex, appMode, reviewIndex, currentDeckName };
+            localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+        }
+
+        function loadProgress() {
+            const savedStr = localStorage.getItem(SAVE_KEY);
+            if (savedStr) {
+                try {
+                    const data = JSON.parse(savedStr);
+                    if (data.levels && data.levels.length === 5) {
+                        levels = data.levels;
+                        currentLevelIndex = data.currentLevelIndex || 0;
+                        appMode = data.appMode || 'srs';
+                        reviewIndex = data.reviewIndex || 0;
+                        currentDeckName = data.currentDeckName || '';
+                        
+                        emptyState.classList.add('hidden');
+                        showElement(flashcardArea);
+                        flashcardArea.classList.add('flex');
+                        
+                        updateDeckNameUI();
+                        renderCard();
+                        return true;
+                    }
+                } catch (e) { console.error("載入存檔失敗:", e); }
+            }
+            return false;
+        }
+
+        function resetProgress() {
+            if (confirm("⚠️ 確定要清除所有學習進度嗎？\n\n這將會刪除您目前的闖關紀錄，並讓 App 回到最剛開始的空白狀態。（此動作無法復原）")) {
+                localStorage.removeItem(SAVE_KEY);
+                location.reload(); 
+            }
+        }
+
+        function updateDeckNameUI() {
+            const deckDisplay = document.getElementById('deck-name-display');
+            if (currentDeckName) {
+                deckDisplay.textContent = currentDeckName;
+                deckDisplay.classList.remove('hidden');
+            } else {
+                deckDisplay.classList.add('hidden');
+            }
+        }
+
+        function parseCSV(text) {
+            text = text.replace(/^\uFEFF/, '');
+            const result = [];
+            let row = [], currentCell = '', inQuotes = false;
+
+            for (let i = 0; i < text.length; i++) {
+                let char = text[i], nextChar = text[i + 1];
+                if (inQuotes) {
+                    if (char === '"' && nextChar === '"') { currentCell += '"'; i++; } 
+                    else if (char === '"') inQuotes = false;
+                    else currentCell += char;
+                } else {
+                    if (char === '"') inQuotes = true;
+                    else if (char === ',') { row.push(currentCell.trim()); currentCell = ''; } 
+                    else if (char === '\n' || (char === '\r' && nextChar === '\n')) {
+                        if (char === '\r') i++;
+                        row.push(currentCell.trim());
+                        if (row.length >= 2 && row[0] !== '正面' && row[0].toLowerCase() !== 'front' && row[0] !== '') {
+                            result.push({ front: row[0], back: row[1] });
+                        }
+                        row = []; currentCell = '';
+                    } else { currentCell += char; }
+                }
+            }
+            row.push(currentCell.trim());
+            if (row.length >= 2 && row[0] !== '正面' && row[0].toLowerCase() !== 'front' && row[0] !== '') {
+                result.push({ front: row[0], back: row[1] });
+            }
+            return result;
+        }
+
+        function distributeCardsToLevels(cards) {
+            const newLevels = [];
+            const baseSize = Math.floor(cards.length / 5);
+            let remainder = cards.length % 5;
+            let startIndex = 0;
+
+            for (let i = 0; i < 5; i++) {
+                let size = baseSize + (remainder > 0 ? 1 : 0);
+                remainder--;
+                let chunk = cards.slice(startIndex, startIndex + size);
+                
+                let status = 'pending';
+                if (chunk.length === 0) status = 'completed';
+                else if (i === 0) status = 'active';
+
+                newLevels.push({
+                    id: i, label: LEVEL_LABELS[i],
+                    originalCards: chunk, remainingCards: [...chunk], completedCards: [],
+                    stats: { again: 0, hard: 0, good: 0, easy: 0 },
+                    status: status
+                });
+                startIndex += size;
+            }
+            
+            let foundActive = false;
+            for (let i = 0; i < 5; i++) {
+                if (newLevels[i].status !== 'completed' && !foundActive) {
+                    newLevels[i].status = 'active';
+                    foundActive = true;
+                }
+            }
+            return newLevels;
+        }
+
+        function stopAudio() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+                currentAudio = null;
+            }
+            window.speechSynthesis.cancel();
+        }
+
+        function getEnglishVoice() {
+            const voices = window.speechSynthesis.getVoices();
+            if (voices.length === 0) return null;
+            let voice = voices.find(v => v.lang === 'en-US' && v.name.includes('Google'));
+            if (!voice) voice = voices.find(v => v.lang === 'en-US');
+            if (!voice) voice = voices.find(v => v.lang.startsWith('en'));
+            return voice;
+        }
+
+        async function playAudio(text, type) {
+            if (!text || text.trim() === '') return;
+            stopAudio();
+
+            const cacheKey = `${type}_${text}`;
+            
+            const playNativeTTS = () => {
+                const utterance = new SpeechSynthesisUtterance();
+                utterance.lang = 'en-US';
+                
+                const voice = getEnglishVoice();
+                if (voice) utterance.voice = voice;
+
+                let finalText = text;
+                if (type === 'front' && text.split(' ').length === 1 && !text.endsWith('.')) {
+                     finalText = text + ".";
+                }
+                utterance.text = finalText;
+                utterance.rate = ttsRate; 
+                window.speechSynthesis.speak(utterance);
+            };
+
+            if (audioCache.has(cacheKey)) {
+                currentAudio = new Audio(audioCache.get(cacheKey));
+                currentAudio.playbackRate = ttsRate;
+                currentAudio.play();
+                return;
+            }
+            playNativeTTS();
+        }
+        
+        window.speechSynthesis.onvoiceschanged = function() {};
+
+        async function fetchImageForWord(word) {
+            if (imageCache.has(word)) return imageCache.get(word);
+            if (preloadingSet.has(word)) return null; 
+
+            preloadingSet.add(word);
+            try {
+                const cleanWord = word.trim().split(' ')[0];
+                const url = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(cleanWord)}&prop=pageimages&format=json&pithumbsize=600&origin=*`;
+                const response = await fetch(url);
+                const data = await response.json();
+                const pages = data.query.pages;
+                const pageId = Object.keys(pages)[0];
+                
+                let finalUrl = (pageId !== "-1" && pages[pageId].thumbnail) ? pages[pageId].thumbnail.source : `https://placehold.co/400x400/f8fafc/94a3b8?text=${encodeURIComponent(word)}`;
+                imageCache.set(word, finalUrl);
+                preloadingSet.delete(word);
+                return finalUrl;
+            } catch (e) {
+                const fallback = `https://placehold.co/400x400/f8fafc/94a3b8?text=${encodeURIComponent(word)}`;
+                imageCache.set(word, fallback);
+                preloadingSet.delete(word);
+                return fallback;
+            }
+        }
+
+        function preloadNextImages(count = 6) {
+            const lvl = levels[currentLevelIndex];
+            if(!lvl) return;
+            const cardsToPreload = appMode === 'srs' ? lvl.remainingCards.slice(0, count) : lvl.completedCards.slice(reviewIndex, reviewIndex + count);
+            for (const card of cardsToPreload) {
+                if (!imageCache.has(card.front) && !preloadingSet.has(card.front)) {
+                    fetchImageForWord(card.front);
+                }
+            }
+        }
+
+        function renderLevelTabs() {
+            const container = document.getElementById('level-tabs');
+            container.innerHTML = '';
+            
+            levels.forEach((lvl, idx) => {
+                const btn = document.createElement('button');
+                const isCurrent = idx === currentLevelIndex;
+                
+                btn.className = 'flex-1 shrink-0 px-2 sm:px-4 rounded-xl font-bold transition-colors border-2 flex items-center justify-center gap-1 sm:gap-1.5 text-xs sm:text-sm h-9 sm:h-10 focus:outline-none ';
+                
+                if (lvl.status === 'completed') {
+                    if (isCurrent) btn.className += 'bg-green-600 text-white border-green-600 shadow-sm';
+                    else btn.className += 'bg-green-500 text-white border-green-500 opacity-90 hover:opacity-100';
+                    btn.innerHTML = `<i class="ph-bold ph-check text-white"></i> ${lvl.label}`;
+                    btn.onclick = () => selectLevel(idx);
+                } else if (lvl.status === 'active') {
+                    if (isCurrent) btn.className += 'bg-white text-blue-600 border-blue-500 shadow-sm';
+                    else btn.className += 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300';
+                    btn.innerHTML = lvl.label;
+                    btn.onclick = () => selectLevel(idx);
+                } else {
+                    btn.className += 'bg-slate-50 text-slate-400 border-transparent opacity-60 cursor-not-allowed';
+                    btn.innerHTML = `<i class="ph-fill ph-lock-key text-xs"></i> ${lvl.label}`;
+                    btn.disabled = true;
+                }
+                container.appendChild(btn);
+            });
+        }
+
+        function selectLevel(idx) {
+            const lvl = levels[idx];
+            if (lvl.status === 'completed') {
+                appMode = 'review';
+                currentLevelIndex = idx;
+                reviewIndex = 0;
+            } else if (lvl.status === 'active') {
+                appMode = 'srs';
+                currentLevelIndex = idx;
+            }
+            isFlipped = false;
+            if (isRecording && activeRecognition) activeRecognition.stop();
+            saveProgress();
+            renderCard();
+        }
+
+        function updateStatsUI() {
+            const lvl = levels[currentLevelIndex];
+            const total = lvl.originalCards.length;
+            
+            document.getElementById('stat-again').innerText = lvl.stats.again;
+            document.getElementById('stat-hard').innerText = lvl.stats.hard;
+            document.getElementById('stat-good').innerText = lvl.stats.good;
+            document.getElementById('stat-easy').innerText = lvl.stats.easy;
+            document.getElementById('total-count').innerText = total;
+            
+            if (appMode === 'srs') {
+                statsContainer.classList.remove('opacity-40', 'grayscale');
+                const remaining = lvl.remainingCards.length;
+                document.getElementById('remaining-count').innerText = remaining;
+                const progressPercent = total === 0 ? 100 : ((total - remaining) / total) * 100;
+                document.getElementById('progress-bar').style.width = `${progressPercent}%`;
+            } else {
+                statsContainer.classList.add('opacity-40', 'grayscale');
+                document.getElementById('remaining-count').innerText = (reviewIndex + 1);
+                const progressPercent = total === 0 ? 100 : ((reviewIndex + 1) / total) * 100;
+                document.getElementById('progress-bar').style.width = `${progressPercent}%`;
+            }
+        }
+
+        const escapeHTML = (str) => str.replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag));
+
+        function formatBackContent(backStr) {
+            const regex = /(【例句】\s*)([^\(（\n]+)(.*)/is;
+            const match = backStr.match(regex);
+
+            if (match) {
+                const before = backStr.substring(0, match.index).trim();
+                const title = match[1];
+                const engSentence = match[2].trim();
+                const after = match[3].trim();
+
+                let html = `<div class="whitespace-pre-wrap mb-1.5 text-slate-800 font-medium text-[15px] sm:text-base leading-snug">${escapeHTML(before)}</div>`;
+                html += `<div class="font-bold text-[10px] sm:text-xs text-blue-800 bg-blue-100 inline-block px-2 py-0.5 rounded mb-1.5 shadow-sm">${escapeHTML(title.trim())}</div>`;
+                
+                html += `<div class="flex items-start gap-2 bg-blue-50/70 p-2 sm:p-2.5 rounded-xl border border-blue-100">`;
+                
+                html += `<div class="flex-1 min-w-0">`;
+                html += `<div class="english-sentence text-blue-900 font-bold text-sm sm:text-base mb-0.5 leading-snug">${escapeHTML(engSentence)}</div>`;
+                html += `<div class="whitespace-pre-wrap text-slate-500 text-[11px] sm:text-xs mb-0.5 leading-tight">${escapeHTML(after)}</div>`;
+                html += `<div class="recognized-text hidden mt-1.5 w-full animate-bounce-in"></div>`; 
+                html += `</div>`;
+                
+                html += `<div class="flex flex-col gap-1.5 shrink-0">`;
+                html += `<button class="back-speaker-btn text-blue-500 hover:text-blue-700 hover:bg-blue-200 p-1.5 rounded-full transition-colors focus:outline-none flex-shrink-0" data-text="${escapeHTML(engSentence)}"><i class="ph-fill ph-speaker-high text-lg"></i></button>`;
+                html += `<button class="mic-btn text-green-600 hover:text-green-800 hover:bg-green-200 p-1.5 rounded-full transition-colors focus:outline-none flex-shrink-0" title="練習發音"><i class="ph-fill ph-microphone text-lg"></i></button>`;
+                html += `</div>`;
+                html += `</div>`;
+                
+                return { html, engSentence };
+            } else {
+                return { html: `<div class="whitespace-pre-wrap font-medium text-slate-800 text-[15px] sm:text-base leading-relaxed">${escapeHTML(backStr)}</div>`, engSentence: "" };
+            }
+        }
+
+        function renderCard() {
+            renderLevelTabs();
+            updateStatsUI();
+            
+            const lvl = levels[currentLevelIndex];
+            const card = appMode === 'srs' ? lvl.remainingCards[0] : lvl.completedCards[reviewIndex];
+            
+            if (!card) return;
+            
+            frontText.innerText = card.front;
+            const formatted = formatBackContent(card.back);
+            backTextContainer.innerHTML = formatted.html;
+            card.engSentence = formatted.engSentence; 
+
+            const backScrollContainer = document.getElementById('card-back-scroll-container');
+            if (backScrollContainer) backScrollContainer.scrollTop = 0;
+            if (backTextContainer) backTextContainer.scrollTop = 0;
+            
+            const backSpeakerBtn = document.querySelector('.back-speaker-btn');
+            if (backSpeakerBtn) {
+                backSpeakerBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); 
+                    if (isRecording && activeRecognition) activeRecognition.stop();
+                    playAudio(backSpeakerBtn.getAttribute('data-text'), 'back');
+                });
+            }
+
+            const micBtn = document.querySelector('.mic-btn');
+            const recognizedTextContainer = document.querySelector('.recognized-text');
+            
+            if (micBtn) {
+                micBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    if (!SpeechRecognition) {
+                        recognizedTextContainer.innerHTML = `
+                            <div class="bg-red-50 text-red-600 text-xs p-2 rounded-lg text-center">
+                                ⚠️ 您的瀏覽器不支援語音辨識。建議使用 Safari。
+                            </div>`;
+                        recognizedTextContainer.classList.remove('hidden');
+                        return;
+                    }
+
+                    if (isRecording && activeRecognition) {
+                        activeRecognition.stop();
+                        return;
+                    }
+
+                    stopAudio(); 
+
+                    activeRecognition = new SpeechRecognition();
+                    activeRecognition.lang = 'en-US';
+                    activeRecognition.continuous = false;
+                    activeRecognition.interimResults = false;
+
+                    activeRecognition.onstart = function() {
+                        isRecording = true;
+                        micBtn.classList.remove('text-green-600', 'hover:text-green-800', 'hover:bg-green-200');
+                        micBtn.classList.add('text-red-600', 'hover:text-red-700', 'bg-red-100', 'animate-pulse');
+                        recognizedTextContainer.classList.add('hidden');
+                        recognizedTextContainer.innerHTML = '';
+                    };
+
+                    activeRecognition.onresult = function(event) {
+                        const transcript = event.results[0][0].transcript;
+                        const currentCard = appMode === 'srs' ? levels[currentLevelIndex].remainingCards[0] : levels[currentLevelIndex].completedCards[reviewIndex];
+                        const expectedSentence = currentCard.engSentence || currentCard.front;
+                        
+                        const result = calculatePronunciationScore(expectedSentence, transcript);
+                        
+                        let scoreColor = 'text-green-600';
+                        if (result.score < 6) scoreColor = 'text-red-500';
+                        else if (result.score < 8) scoreColor = 'text-orange-500';
+
+                        recognizedTextContainer.innerHTML = `
+                            <div class="bg-white p-2 rounded-lg border border-blue-100 shadow-sm flex flex-col gap-1.5">
+                                <div class="flex justify-between items-center border-b border-slate-100 pb-1">
+                                    <div class="text-[10px] text-blue-500 font-bold flex items-center gap-1 uppercase tracking-wider">
+                                        <i class="ph-fill ph-microphone-stage text-xs"></i> 辨識結果
+                                    </div>
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-[9px] text-slate-400 font-bold uppercase">Score</span>
+                                        <span class="${scoreColor} text-lg font-black leading-none">${result.score}</span>
+                                    </div>
+                                </div>
+                                <div class="text-[13px] leading-snug break-words">
+                                    ${result.ui}
+                                </div>
+                                <div class="text-[11px] font-bold text-slate-600 bg-slate-50 px-2 py-1 rounded text-center">
+                                    ${result.feedback}
+                                </div>
+                            </div>
+                        `;
+                        recognizedTextContainer.classList.remove('hidden');
+                    };
+
+                    activeRecognition.onerror = function(event) {
+                        let errorTitle = event.error;
+                        let hintHtml = "";
+
+                        const ua = navigator.userAgent;
+                        const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                        const isAndroid = /android/i.test(ua);
+
+                        if (event.error === 'not-allowed') {
+                            errorTitle = "麥克風權限不足";
+                            if (isIOS) {
+                                hintHtml = "請至 iPhone「設定 > Safari > 麥克風」設為<b>允許</b>。";
+                            } else if (isAndroid) {
+                                hintHtml = "請在瀏覽器網址列旁點擊「鎖頭」圖示，並<b>允許麥克風權限</b>。";
+                            } else {
+                                hintHtml = "請在瀏覽器網址列左側點擊「鎖頭」圖示，將麥克風設為<b>允許</b>。";
+                            }
+                        } else if (event.error === 'audio-capture' || event.error === 'service-not-allowed') {
+                            errorTitle = "無法啟動語音服務";
+                            if (isIOS) {
+                                hintHtml = "請確保 iPhone 已開啟聽寫：<br>至「設定 > 一般 > 鍵盤」中打開<b>啟用聽寫</b>。";
+                            } else {
+                                hintHtml = "請檢查麥克風設備是否連接且未被佔用。";
+                            }
+                        } else if (event.error === 'network') {
+                            errorTitle = "網路連線異常";
+                            hintHtml = "語音辨識需要網路連線，請檢查狀態。";
+                        } else if (event.error === 'no-speech') {
+                            errorTitle = "未偵測到聲音";
+                            hintHtml = "請再試一次，或檢查您的麥克風音量。";
+                        }
+
+                        recognizedTextContainer.innerHTML = `
+                            <div class="bg-red-50 text-red-600 p-2.5 rounded-lg border border-red-100 shadow-sm flex flex-col gap-1.5">
+                                <div class="text-xs font-bold flex items-center gap-1">
+                                    <i class="ph-fill ph-warning-circle text-base"></i> ${errorTitle} (${event.error})
+                                </div>
+                                <div class="text-[11px] text-red-500 leading-snug">
+                                    ${hintHtml}
+                                </div>
+                            </div>`;
+                        recognizedTextContainer.classList.remove('hidden');
+                    };
+
+                    activeRecognition.onend = function() {
+                        isRecording = false;
+                        micBtn.classList.add('text-green-600', 'hover:text-green-800', 'hover:bg-green-200');
+                        micBtn.classList.remove('text-red-600', 'hover:text-red-700', 'bg-red-100', 'animate-pulse');
+                    };
+
+                    try {
+                        activeRecognition.start(); 
+                    } catch (e) {
+                        console.error("啟動辨識失敗:", e);
+                    }
+                });
+            }
+
+            if (imageCache.has(card.front)) {
+                backImageContainer.innerHTML = `<img src="${imageCache.get(card.front)}" class="w-full h-full object-contain p-2" alt="${card.front}">`;
+            } else {
+                backImageContainer.innerHTML = `
+                    <div class="flex flex-col items-center justify-center text-slate-300 animate-pulse">
+                        <i class="ph ph-image text-4xl mb-1"></i>
+                    </div>`;
+                fetchImageForWord(card.front).then(url => {
+                    const currentViewingWord = appMode === 'srs' ? lvl.remainingCards[0]?.front : lvl.completedCards[reviewIndex]?.front;
+                    if (currentViewingWord === card.front) {
+                        backImageContainer.innerHTML = `<img src="${url}" class="w-full h-full object-contain p-2 transition-opacity duration-300" alt="${card.front}">`;
+                    }
+                });
+            }
+
+            if (appMode === 'srs') {
+                srsButtons.classList.remove('hidden');
+                reviewButtons.classList.add('hidden');
+            } else {
+                srsButtons.classList.add('hidden');
+                reviewButtons.classList.remove('hidden');
+                document.getElementById('btn-prev').disabled = (reviewIndex === 0);
+                document.getElementById('btn-next').disabled = (reviewIndex === lvl.completedCards.length - 1);
+            }
+
+            preloadNextImages(6);
+
+            if (isFlipped) {
+                cardInner.style.transition = 'none';
+                cardInner.classList.remove('rotate-y-180');
+                isFlipped = false;
+                void cardInner.offsetWidth; 
+                cardInner.style.transition = '';
+            }
+
+            playAudio(card.front, 'front');
+        }
+
+        // --- Interaction Logic ---
+        function toggleFlip() {
+            const lvl = levels[currentLevelIndex];
+            if (appMode === 'srs' && lvl.remainingCards.length === 0) return;
+            if (appMode === 'review' && lvl.completedCards.length === 0) return;
+            
+            if (isRecording && activeRecognition) activeRecognition.stop();
+
+            isFlipped = !isFlipped;
+            if (isFlipped) {
+                cardInner.classList.add('rotate-y-180');
+                const card = appMode === 'srs' ? lvl.remainingCards[0] : lvl.completedCards[reviewIndex];
+                if (card.engSentence) playAudio(card.engSentence, 'back');
+            } else {
+                cardInner.classList.remove('rotate-y-180');
+                stopAudio();
+            }
+        }
+
+        function handleSRS(type, e) {
+            if (e) e.stopPropagation(); 
+            if (appMode !== 'srs') return;
+            
+            if (isRecording && activeRecognition) activeRecognition.stop();
+
+            const lvl = levels[currentLevelIndex];
+            if (lvl.remainingCards.length === 0) return;
+
+            stopAudio();
+            lvl.stats[type]++;
+            const currentCard = lvl.remainingCards.shift(); 
+
+            if (type === 'again') {
+                lvl.remainingCards.splice(Math.min(1, lvl.remainingCards.length), 0, currentCard);
+            } else if (type === 'hard') {
+                lvl.remainingCards.splice(Math.floor(lvl.remainingCards.length / 2), 0, currentCard);
+            } else if (type === 'good') {
+                lvl.remainingCards.push(currentCard);
+            } else if (type === 'easy') {
+                lvl.completedCards.push(currentCard);
+            }
+
+            saveProgress();
+
+            if (lvl.remainingCards.length === 0) {
+                lvl.status = 'completed';
+                saveProgress();
+                renderLevelTabs(); 
+                
+                if (levels.every(l => l.status === 'completed')) {
+                    showElement(allCompleteModal);
+                } else {
+                    showElement(levelCompleteModal);
+                }
+            } else {
+                renderCard();
+            }
+        }
+
+        function handleReview(direction, e) {
+            if (e) e.stopPropagation();
+            if (appMode !== 'review') return;
+            
+            if (isRecording && activeRecognition) activeRecognition.stop();
+            
+            const lvl = levels[currentLevelIndex];
+            if (direction === 'prev' && reviewIndex > 0) reviewIndex--;
+            else if (direction === 'next' && reviewIndex < lvl.completedCards.length - 1) reviewIndex++;
+            else return;
+            
+            isFlipped = false;
+            saveProgress();
+            renderCard();
+        }
+
+        function proceedToNextLevel() {
+            hideElement(levelCompleteModal);
+            
+            if (isRecording && activeRecognition) activeRecognition.stop();
+            
+            let nextIdx = currentLevelIndex + 1;
+            while (nextIdx < 5 && levels[nextIdx].status === 'completed') nextIdx++;
+            
+            if (nextIdx < 5) {
+                levels[nextIdx].status = 'active';
+                currentLevelIndex = nextIdx;
+                appMode = 'srs';
+            } else {
+                appMode = 'review';
+            }
+            saveProgress();
+            renderCard();
+        }
+
+        function closeAllCompleteModal() {
+            hideElement(allCompleteModal);
+            appMode = 'review';
+            reviewIndex = 0;
+            saveProgress();
+            renderCard();
+        }
+
+        function openInfoModal() { showElement(infoModal); }
+        function closeInfoModal() { hideElement(infoModal); }
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            errorMsg.classList.add('hidden');
+            const reader = new FileReader();
+            
+            reader.onload = function(event) {
+                try {
+                    const text = event.target.result;
+                    const parsedCards = parseCSV(text);
+                    
+                    if (parsedCards.length > 0) {
+                        let rawName = file.name.replace(/\.[^/.]+$/, "");
+                        currentDeckName = rawName.substring(0, 5);
+
+                        levels = distributeCardsToLevels(parsedCards);
+                        currentLevelIndex = 0;
+                        appMode = 'srs';
+                        
+                        for(let i=0; i<5; i++) {
+                            if(levels[i].status === 'active') { currentLevelIndex = i; break; }
+                        }
+
+                        emptyState.classList.add('hidden');
+                        showElement(flashcardArea);
+                        flashcardArea.classList.add('flex');
+                        
+                        updateDeckNameUI(); 
+                        saveProgress(); 
+                        renderCard();
+                    } else {
+                        errorMsg.innerHTML = "⚠️ <b>解析失敗：找不到單字資料！</b><br>請確認 CSV 檔案內有文字，且欄位以逗號分隔。";
+                        errorMsg.classList.remove('hidden');
+                    }
+                } catch (error) {
+                    errorMsg.innerHTML = "⚠️ <b>讀取檔案時發生異常！</b><br>檔案格式可能已損毀或無法識別。";
+                    errorMsg.classList.remove('hidden');
+                } finally {
+                    e.target.value = '';
+                }
+            };
+            reader.readAsText(file, 'UTF-8');
+        });
+
+        cardContainer.addEventListener('click', toggleFlip);
+
+        document.getElementById('front-speaker-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (isRecording && activeRecognition) activeRecognition.stop();
+            const currentWord = appMode === 'srs' ? levels[currentLevelIndex].remainingCards[0]?.front : levels[currentLevelIndex].completedCards[reviewIndex]?.front;
+            if (currentWord) playAudio(currentWord, 'front');
+        });
+
+        document.addEventListener('keydown', (e) => {
+            const isModalOpen = (el) => !el.classList.contains('hidden') && !el.classList.contains('modal-hidden');
+            
+            if (isModalOpen(infoModal) || isModalOpen(levelCompleteModal) || isModalOpen(allCompleteModal)) {
+                return;
+            }
+
+            const lvl = levels[currentLevelIndex];
+            if (!lvl) return;
+            const hasCards = (appMode === 'srs' && lvl.remainingCards.length > 0) || 
+                             (appMode === 'review' && lvl.completedCards.length > 0);
+            
+            if (!hasCards) return;
+
+            switch(e.key) {
+                case ' ': 
+                    e.preventDefault(); 
+                    toggleFlip();
+                    break;
+                case '1':
+                    if (appMode === 'srs' && isFlipped) handleSRS('again');
+                    break;
+                case '2':
+                    if (appMode === 'srs' && isFlipped) handleSRS('hard');
+                    break;
+                case '3':
+                    if (appMode === 'srs' && isFlipped) handleSRS('good');
+                    break;
+                case '4':
+                    if (appMode === 'srs' && isFlipped) handleSRS('easy');
+                    break;
+                case 'ArrowLeft':
+                    if (appMode === 'review') handleReview('prev');
+                    break;
+                case 'ArrowRight':
+                    if (appMode === 'review') handleReview('next');
+                    break;
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', () => { 
+            loadFontPreference(); 
+            loadProgress();       
+        });
+
+    </script>
+</body>
+</html>
